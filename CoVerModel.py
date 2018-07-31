@@ -25,9 +25,10 @@ class CoVeRModel(GloVeModel):
         self.log_dir = log_dir
         self.summary_batch_interval = summary_batch_interval
         self.tsne_epoch_interval = tsne_epoch_interval
-        self.k = 0
+        self.covariance_embeddings = None
         self.__cooccurrence_tensor = None
         self.__vocab_size = 0
+        self.k = 0
 
     def fit_corpora(self, corpora):
         print('FIT_CORPORA')
@@ -63,6 +64,7 @@ class CoVeRModel(GloVeModel):
         self.__cooccurrence_tensor = {k: v for d in temp for k, v in d.items()}
 
     def __build_graph(self):
+        # build graph for training
         print('BUILD GRAPH')
         self.__graph = tf.Graph()
         with self.__graph.as_default(),self.__graph.device(_device_for_node):
@@ -98,9 +100,7 @@ class CoVeRModel(GloVeModel):
             focal_embedding = tf.nn.embedding_lookup([focal_embeddings], self.__focal_input)
             context_embedding = tf.nn.embedding_lookup([context_embeddings], self.__context_input)
             covariance_embedding = tf.nn.embedding_lookup([covariance_embeddings], self.__covariance_input)
-            
             focal_bias = tf.gather_nd(focal_biases, tf.stack([self.__focal_input, self.__covariance_input], axis=1))
-            
             context_bias = tf.gather_nd(context_biases, tf.stack([self.__context_input, self.__covariance_input], axis=1))
 
             weighting_factor = tf.minimum(
@@ -130,6 +130,7 @@ class CoVeRModel(GloVeModel):
 
             self.__combined_embeddings = tf.add(focal_embeddings, context_embeddings,
                                                 name='combined_embeddings')
+            self.covariance_embeddings = tf.convert_to_tensor(covariance_embeddings)
 
     def train(self):
         print('TRAINING')
@@ -141,30 +142,32 @@ class CoVeRModel(GloVeModel):
             if should_write_summaries:
                 print('Writing TensorBoard summaries to {}'.format(self.log_dir))
                 summary_writer = tf.summary.FileWriter(self.log_dir, graph=session.graph)
-            tf.global_variables_initializer().run
+            tf.global_variables_initializer().run()
             for epoch in range(self.num_epochs):
                 shuffle(batches)
-                # print('EPOCHS', epoch)
                 for batch_index, batch in enumerate(batches):
                     i_s, j_s, k_s, counts = batch
-                    if len(counts) != self.batch_size: # batch_size = 512
+                    if len(counts) != self.batch_size:
                         continue
-                    #####
+                #####
                     feed_dict = {
                         self.__focal_input: i_s,
                         self.__context_input: j_s,
+                        self.__covariance_input: k_s,
                         self.__cooccurrence_count: counts} # the sequence//style of input to the session
                     session.run([self.__optimizer], feed_dict=feed_dict) # substitude the values in the geed_dict for the corresponding input values
                     if should_write_summaries and (total_steps + 1) % self.summary_batch_interval == 0:
                         summary_str = session.run(self.__summary, feed_dict=feed_dict)
                         summary_writer.add_summary(summary_str, total_steps)
                     total_steps += 1
-                    #####
                 if should_generate_tsne and (epoch + 1) % self.tsne_epoch_interval == 0: # to visualize data on a graph
                     current_embeddings = self.__combined_embeddings.eval()
                     output_path = os.path.join(self.log_dir, "epoch{:03d}.png".format(epoch + 1))
                     self.generate_tsne(output_path, embeddings=current_embeddings)
+                #####
+            print('xxxxxxxEVALxxxxxxxxx')
             self.__embeddings = self.__combined_embeddings.eval() # combined_embeddings: addition of focal and context embeddings
+            self.covariance_embeddings = self.covariance_embeddings.eval()
             if should_write_summaries:
                 summary_writer.close()
 
@@ -186,6 +189,13 @@ class CoVeRModel(GloVeModel):
         if self.__embeddings is None:
             raise NotTrainedError("Need to train model before accessing embeddings")
         return self.__embeddings
+
+    @property
+    def covariates(self):
+        if self.covariance_embeddings is None:
+            raise NotTrainedError("Need to train model before accesing embeddings")
+        return self.covariance_embeddings
+    
 
 def _batchify(batch_size, *sequences):
     print('BATCHIFY')
