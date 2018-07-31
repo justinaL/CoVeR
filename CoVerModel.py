@@ -46,9 +46,8 @@ class CoVeRModel(GloVeModel):
             model._GloVeModel__fit_to_corpus(corpus, self.max_vocab_size, self.min_occurrences, model.left_context, model.right_context)
             self.models.append(model)
             self.__cooccurrence_tensor.append(model._GloVeModel__cooccurrence_matrix)
-            self.__vocab_size += self.vocab_size(model)
+            self.__vocab_size += model.vocab_size
             self.k += 1
-
 
     def __update_cooccurrence_tensor(self):
         # update cooccurence tensor with 'k' added to the key
@@ -181,27 +180,22 @@ class CoVeRModel(GloVeModel):
         i_indices, j_indices, k_indices, counts = zip(*cooccurrences)
         return list(_batchify(self.batch_size, i_indices, j_indices, k_indices, counts))
 
-    def vocab_size(self, model):
-        return len(model._GloVeModel__words)
-
-    @property
-    def embeddings(self):
-        if self.__embeddings is None:
-            raise NotTrainedError("Need to train model before accessing embeddings")
-        return self.__embeddings
-
     @property
     def covariates(self):
         if self.covariance_embeddings is None:
             raise NotTrainedError("Need to train model before accesing embeddings")
         return self.covariance_embeddings
     
-
+    def get_glove_model(self, gmodel):
+        print('COVER GET GLOVE MODEL')
+        gmodel._GloVeModel__build_graph()
+        gmodel.train(num_epochs=self.num_epochs, log_dir=self.log_dir, summary_batch_interval=self.summary_batch_interval, tsne_epoch_interval=self.tsne_epoch_interval)
+        return gmodel
+        
 def _batchify(batch_size, *sequences):
     print('BATCHIFY')
     for i in range(0, len(sequences[0]), batch_size):
         yield tuple(sequence[i:i+batch_size] for sequence in sequences)
-
 
 def _device_for_node(n):
     if n.type == "Matmul":
