@@ -49,62 +49,64 @@ def analysis(cover):
   for word in common_words:
     f_em = fmodel.embedding_for(word)
     f_em = tf.multiply(f_em,covariates[0])
+
     m_em = mmodel.embedding_for(word)
     m_em = tf.multiply(m_em,covariates[1])
+
     score = tf.losses.cosine_distance(tf.nn.l2_normalize(f_em,0), tf.nn.l2_normalize(m_em,0), dim=0)
     score = tf.subtract(1.0, score)
+
     sim_scores[word] = [sess.run(score)]
 
-  return sim_scores,male,female
+  return sim_scores,male,female,covariates
+
+def avg(dic):
+  avg_dic = {}
+  for key, val in dic.items():
+    avg = tf.reduce_mean(val)
+    avg_dic[key] = [sess.run(avg)]
+
+  return avg_dic
+
+def write_file(file_path, dic):
+  save_file_path = file_path
+  print('writing', file_path)
+  with open(save_file_path,"w") as save_file:
+    for k, v in dic.items():
+      save_file.write(str(k) + ' >>> ' + str(v) + '\n\n')
+
 
 def main():
   [female_speech, male_speech] = get_corpus()
   parsed_female_corpus = get_parsed_corpus(female_speech,500)
   parsed_male_corpus = get_parsed_corpus(male_speech,500)
   parsed_corpora = [parsed_female_corpus] + [parsed_male_corpus]
-  cover = CoVeRModel(embedding_size=300, context_size=10,min_occurrences=5,learning_rate=0.05,batch_size=512)
+  cover = CoVeRModel(embedding_size=300,context_size=10,min_occurrences=5,learning_rate=0.05,batch_size=512)
   cover.fit_corpora(parsed_corpora)
   cover.train()
 
-  [ress,male,female] = analysis(cover)
+  [similarities,male,female,covariates] = analysis(cover)
   for i in range(4):
-    [res,ma,fe] = analysis(cover)
-    ress = {key:value + res[key] for key,value in ress.items()}
+    [sim,ma,fe,_] = analysis(cover)
+    similarities = {key:value + sim[key] for key,value in similarities.items()}
     male = {key:value + ma[key] for key,value in male.items()}
     female = {key:value + fe[key] for key,value in female.items()}
     i += 1
 
-  avg_sim = {}
-  for key,val in ress.items():
-    avg = tf.reduce_mean(val)
-    avg_sim[key] = sess.run(avg)
+  avg_sim = avg(similarities)
+  similarities = {key:value + avg_sim[key] for key,value in similarities.items()}
 
-  print('\nxxxxxxxxxxxxxxxxxxx\n')
-  print(ress)
+  write_file("similarities_500.txt", similarities)
+  write_file("female_500.txt", female)
+  write_file("male_500.txt", male)
+
+  with open("covariates_500.txt", "w") as f:
+    f.write("\n\n".join(map(str, covariates)))
+
+  with open("cover_embeddings_500.txt", "w") as f:
+    f.write("\n\n".join(map(str,cover._CoVeRModel__embeddings)))
+
   print('\nxxxxxxxxxxxxxxxxxxx\n')
   print(avg_sim)
-
-  save_file_path = r"female_500.txt"
-  print('write female')
-  with open(save_file_path, "w") as save_file:
-      for k, v in female.items():
-          save_file.write(str(k) + ' >>> '+ str(v) + '\n\n')
-
-  save_file_path = r"male_500.txt"
-  print('write male')
-  with open(save_file_path,"w") as save_file:
-      for k, v in male.items():
-          save_file.write(str(k) + ' >>> '+ str(v) + '\n\n')
-          
-  save_file_path = r"similarities_500.txt"
-  print('write similarities')
-  with open(save_file_path,"w") as save_file:
-      for k, v in ress.items():
-          save_file.write(str(k) + ' >>> '+ str(v) + '\n\n')
-
-
-
-
-
-
-
+  print('\nxxxxxxxxxxxxxxxxxxx\n')
+  print(covariates)
