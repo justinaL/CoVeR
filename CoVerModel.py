@@ -29,12 +29,15 @@ class CoVeRModel(GloVeModel):
         self.__cooccurrence_tensor = None
         self.__vocab_size = 0
         self.k = 0
+        self.__words =[]
 
     def fit_corpora(self, corpora):
         print('FIT_CORPORA')
         self.__iter_corpora(corpora)
         self.__update_cooccurrence_tensor()
         self.__build_graph()
+        self.__words = [item for sublist in self.__words for item in sublist]
+        print(self.__words)
 
     def __iter_corpora(self, corpora):
         # iterate over corpora and stack cooccurrence matrix
@@ -44,6 +47,7 @@ class CoVeRModel(GloVeModel):
         for corpus in corpora:
             model = GloVeModel(embedding_size=self.embedding_size,context_size=self.context_size,min_occurrences=self.min_occurrences,learning_rate=self.learning_rate,batch_size=self.batch_size)
             model._GloVeModel__fit_to_corpus(corpus, self.max_vocab_size, self.min_occurrences, model.left_context, model.right_context)
+            self.__words.append(model.words)
             self.models.append(model)
             self.__cooccurrence_tensor.append(model._GloVeModel__cooccurrence_matrix)
             self.__vocab_size += model.vocab_size
@@ -185,6 +189,15 @@ class CoVeRModel(GloVeModel):
         if self.covariance_embeddings is None:
             raise NotTrainedError("Need to train model before accesing embeddings")
         return self.covariance_embeddings
+
+    def generate_tsne(self, path=None, size=(100,100), word_count=1000, embeddings=None):
+        if embeddings is None:
+            embeddings = self.__embeddings
+        from sklearn.manifold import TSNE
+        tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
+        low_dim_embs = tsne.fit_transform(embeddings[:word_count, :])
+        labels = self.__words[:word_count]
+        return _plot_with_labels(low_dim_embs, labels, path, size)
     
     def get_glove_model(self, gmodel):
         print('COVER GET GLOVE MODEL')
@@ -202,3 +215,16 @@ def _device_for_node(n):
         return "/gpu:0"
     else:
         return"/cpu:0"
+
+def _plot_with_labels(low_dim_embs, labels, path, size):
+    import matplotlib.pyplot as plt
+    assert low_dim_embs.shape[0] >= len(labels), "More labels than embeddings"
+    figure = plt.figure(figsize=size)
+    for i, label in enumerate(labels):
+        x,y = low_dim_embs[i, :]
+        plt.scatter(x, y)
+        plt.annotate(label, xy=(x, y), xytext=(5, 2), textcoords='offset points', ha='right', va='bottom')
+
+    if path is not None:
+        figure.savefig(path)
+        plt.close(figure)
