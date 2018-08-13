@@ -34,9 +34,6 @@ def get_parsed_corpus(speech,quan):
 def analysis(cover):
   #### ANALYSIS ####
   print('ANALYSIS')
-  female = defaultdict(list)
-  male = defaultdict(list)
-
   covariates = cover.covariates
   [female, male] = cover._CoVeRModel__words
   embeddings = cover._CoVeRModel__embeddings
