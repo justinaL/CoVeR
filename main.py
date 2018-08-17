@@ -73,9 +73,7 @@ def main():
 
   cover.train()
   [fe,ma,_] = analysis(cover)
-  print('combine male')
   male_embedding = np.stack((male_embedding,ma), axis=1)
-  print('combine female')
   female_embedding = np.stack((female_embedding,fe), axis=1)
 
   for i in range(3):
