@@ -35,7 +35,7 @@ def analysis(cover):
   print('ANALYSIS')
   covariates = cover.covariates
   [female, male] = cover._CoVeRModel__words
-  embeddings = cover._CoVeRModel__embeddings
+  embeddings = cover.embeddings
   
   female_embedding = tf.multiply(embeddings,covariates[0])
   female_embedding = sess.run(female_embedding)
