@@ -36,7 +36,6 @@ class CoVeRModel(GloVeModel):
         self.__iter_corpora(corpora)
         self.__update_cooccurrence_tensor()
         self.__build_graph()
-        print(self.__words)
 
     def __iter_corpora(self, corpora):
         # iterate over corpora and stack cooccurrence matrix
@@ -209,7 +208,6 @@ class CoVeRModel(GloVeModel):
         return _plot_with_labels(low_dim_embs, labels, path, size)
         
 def _batchify(batch_size, *sequences):
-    print('BATCHIFY')
     for i in range(0, len(sequences[0]), batch_size):
         yield tuple(sequence[i:i+batch_size] for sequence in sequences)
 

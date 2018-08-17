@@ -17,9 +17,8 @@ def get_corpus():
 
   female_speech = df.loc[(df['obc_sex'] == 'f') & (df['obc_hiscoLabel'] != 'Lawyer'),'words']
   male_speech = df.loc[df['obc_sex'] == 'm','words'] # male speech including lawyers
-  # lawyer_speech = df.loc[df['obc_hiscoLabel'] == 'Lawyer', 'words']
 
-  return female_speech,male_speech#,lawyer_speech
+  return female_speech,male_speech
 
 
 def get_parsed_corpus(speech,quan):
@@ -53,12 +52,13 @@ def avg(arr):
     
     return avg
 
-def write_file(file_path, dic):
-  save_file_path = file_path
-  print('writing', file_path)
-  with open(save_file_path,"w") as save_file:
-    for k, v in dic.items():
-      save_file.write(str(k) + ' >>> ' + str(v) + '\n\n')
+def write_file(file_path, arr):
+    print('writing', file_path)
+    with open(file_path, 'w') as outfile:
+        outfile.write('# Array shape: {0}\n'.format(arr.shape))
+        for data_slice in arr:
+            np.savetxt(outfile, data_slice, fmt='%-7f')
+            outfile.write('\n# New slice\n\n')
 
 def main():
   [female_speech, male_speech] = get_corpus()
@@ -85,10 +85,10 @@ def main():
     m = cover.embedding_size
 
     fe = fe.reshape(n,1,m)
-    fe = np.append(female_embedding,fe,axis=1)
+    female_embedding = np.append(female_embedding,fe,axis=1)
 
     ma = ma.reshape(n,1,m)
-    ma = np.append(male_embedding,ma,axis=1)
+    male_embedding = np.append(male_embedding,ma,axis=1)
 
 
   female_avg = avg(female_embedding)
