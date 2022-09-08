@@ -1,4 +1,4 @@
-# TAG
+# CoVeR
 Implementation of [CoVeR](https://arxiv.org/abs/1802.07839) (Covariate-Specific Vector Representations with Tensor Decomposition), a model that learn word embeddings and a series of covariances to transform normal embeddings to covariate-specific. This is a re-implementation of [GloVe](http://nlp.stanford.edu/projects/glove/) (Global Vectors for Word Representation) proposed by Pennington J., Socher R. and Manning C.D. (2014)
 
 I used this model to analyse the difference on word usage between male and female speech in Old Bailey Voice Corpus from 1780 to 1880, which thus suggesting different meanings. You will need `tf_glove.py` from Simon G. (2017) before running `CoVerModel.py`, you can get it from:
